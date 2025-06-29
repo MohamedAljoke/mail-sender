@@ -7,6 +7,7 @@ import express, {
   Request,
   Router,
 } from "express";
+import path from "path";
 import { logger } from "./shared/logger";
 import { DomainError } from "./shared/errors";
 
@@ -23,6 +24,14 @@ export class ExpressHttpService {
   private setupMiddleware(): void {
     this.app.use(express.json({ limit: "50mb" }));
     this.app.use(cors());
+
+    // Serve static files from assets directory
+    this.app.use(express.static(path.join(__dirname, "assets")));
+    
+    // Serve index.html at root
+    this.app.get("/", (req: Request, res: Response) => {
+      res.sendFile(path.join(__dirname, "assets", "index.html"));
+    });
 
     this.app.use((req: Request, res: Response, next: NextFunction) => {
       logger.debug({

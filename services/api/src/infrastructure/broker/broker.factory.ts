@@ -1,3 +1,4 @@
+import { env } from "../../env.validator";
 import { IMessageBroker } from "./interface";
 import { RabbitMQService } from "./rabbitmq";
 import { SQSService } from "./sqs";
@@ -46,7 +47,7 @@ export const createMessageBroker = (
   const config: BrokerConfig = {
     type,
     rabbitmq: {
-      url: process.env.RABBITMQ_URL || "amqp://localhost:5672",
+      url: env.RABBITMQ_URL || "amqp://localhost:5672",
     },
     sqs: {
       region: process.env.AWS_REGION || "us-east-1",

@@ -2,7 +2,10 @@ import { env } from "./env.validator";
 import { ExpressHttpService } from "./server";
 import { IMessageBroker, createMessageBroker } from "./infrastructure/broker";
 import { RedisService, IRedisService } from "./infrastructure/redis";
-import { WebSocketService, IWebSocketService } from "./infrastructure/websocket";
+import {
+  WebSocketService,
+  IWebSocketService,
+} from "./infrastructure/websocket";
 import { createEmailRoutes, createJobRoutes } from "./routes/email.routes";
 import { createHealthRoutes } from "./routes/health.routes";
 import { logger } from "./shared/logger";
@@ -24,19 +27,19 @@ class Application {
     try {
       // Connect to external services
       await this.connectServices();
-      
+
       // Setup routes
       this.setupRoutes();
-      
+
       // Initialize WebSocket
       this.webSocketService.initialize(this.httpService.getServer());
-      
+
       // Setup Redis pub/sub for real-time updates
       await this.setupRedisPubSub();
-      
+
       // Start HTTP server
       await this.httpService.listen(env.PORT ?? 3000);
-      
+
       logger.info({
         message: "🎉 Application started successfully",
         context: {
@@ -45,10 +48,9 @@ class Application {
           webSocketClients: this.webSocketService.getConnectedClientsCount(),
         },
       });
-      
+
       // Setup graceful shutdown
       this.setupGracefulShutdown();
-      
     } catch (error) {
       logger.error({
         message: "Failed to start application",
@@ -60,11 +62,13 @@ class Application {
 
   private async connectServices(): Promise<void> {
     logger.info({ message: "Connecting to external services..." });
-    
+
     // Connect to message broker
     await this.messageBroker.connect();
-    logger.info({ message: `✅ ${env.MESSAGE_BROKER_TYPE.toUpperCase()} connected` });
-    
+    logger.info({
+      message: `✅ ${env.MESSAGE_BROKER_TYPE.toUpperCase()} connected`,
+    });
+
     // Connect to Redis
     await this.redisService.connect();
     logger.info({ message: "✅ Redis connected" });
@@ -72,19 +76,23 @@ class Application {
 
   private setupRoutes(): void {
     logger.info({ message: "Setting up routes..." });
-    
+
     // Health endpoints
     this.httpService.addRoutes("/", createHealthRoutes());
-    
+
     // Email API routes
     this.httpService.addRoutes(
       "/api/emails",
-      createEmailRoutes(this.messageBroker, this.redisService, this.webSocketService)
+      createEmailRoutes(
+        this.messageBroker,
+        this.redisService,
+        this.webSocketService
+      )
     );
-    
+
     // Job history routes
     this.httpService.addRoutes("/api/jobs", createJobRoutes(this.redisService));
-    
+
     logger.info({ message: "✅ Routes configured" });
   }
 
@@ -130,16 +138,16 @@ class Application {
       try {
         // Close WebSocket server
         await this.webSocketService.close();
-        
+
         // Close HTTP server
         await this.httpService.close();
-        
+
         // Disconnect from message broker
         await this.messageBroker.disconnect();
-        
+
         // Disconnect from Redis
         await this.redisService.disconnect();
-        
+
         logger.info({ message: "✅ Graceful shutdown completed" });
         process.exit(0);
       } catch (error) {

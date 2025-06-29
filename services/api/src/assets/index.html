@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Sender - Distributed Task Scheduler</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📧 Email Sender System</h1>
+            <p>Distributed Task Scheduler Demo</p>
+        </header>
+
+        <div class="main-content">
+            <!-- Send Email Form -->
+            <div class="card">
+                <h2>Send Email</h2>
+                <form id="emailForm">
+                    <div class="form-group">
+                        <label for="to">To:</label>
+                        <input type="email" id="to" name="to" required placeholder="recipient@example.com">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="subject">Subject:</label>
+                        <input type="text" id="subject" name="subject" required placeholder="Email subject">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="body">Message:</label>
+                        <textarea id="body" name="body" required placeholder="Email content..." rows="4"></textarea>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary">Send Email</button>
+                </form>
+                
+                <div id="result" class="result hidden"></div>
+            </div>
+
+            <!-- Complete Job History with Real-time Updates -->
+            <div class="card">
+                <div class="history-header">
+                    <h2>📈 Complete Job History</h2>
+                    <div class="history-controls">
+                        <button type="button" class="btn btn-secondary" onclick="refreshJobHistory()">🔄 Refresh</button>
+                        <button type="button" class="btn btn-secondary" onclick="clearJobHistory()">🗑️ Clear Local</button>
+                        <span class="live-indicator">🟢 Live Updates</span>
+                    </div>
+                </div>
+                <div class="history-stats" id="historyStats">
+                    <div class="stat">
+                        <span class="stat-value" id="totalJobs">0</span>
+                        <span class="stat-label">Total Jobs</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="completedJobs">0</span>
+                        <span class="stat-label">Completed</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="processingJobs">0</span>
+                        <span class="stat-label">Processing</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-value" id="failedJobs">0</span>
+                        <span class="stat-label">Failed</span>
+                    </div>
+                </div>
+                <div id="jobHistory">
+                    <p class="no-jobs">No jobs yet. Submit an email to see live updates!</p>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <div class="links">
+                <a href="http://localhost:8025" target="_blank" class="btn btn-link">📬 MailHog UI</a>
+                <a href="http://localhost:15672" target="_blank" class="btn btn-link">🐰 RabbitMQ Management</a>
+                <a href="http://localhost:16686" target="_blank" class="btn btn-link">📊 Jaeger Tracing</a>
+                <a href="http://localhost:3000/health" target="_blank" class="btn btn-link">🏥 API Health</a>
+                <a href="http://localhost:3002/health" target="_blank" class="btn btn-link">⚙️ Worker Health</a>
+            </div>
+        </footer>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
