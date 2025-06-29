@@ -23,6 +23,27 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    from_port   = 8025
+    to_port     = 8025
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    from_port   = 15672
+    to_port     = 15672
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+  
+  ingress {
+    from_port   = 16686
+    to_port     = 16686
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -44,6 +65,39 @@ resource "aws_lb_listener" "http" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.api.arn
+  }
+}
+
+resource "aws_lb_listener" "mailhog" {
+  load_balancer_arn = aws_lb.main_load_balancer.arn
+  port              = "8025"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.mailhog.arn
+  }
+}
+
+resource "aws_lb_listener" "rabbitmq" {
+  load_balancer_arn = aws_lb.main_load_balancer.arn
+  port              = "15672"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.rabbitmq.arn
+  }
+}
+
+resource "aws_lb_listener" "jaeger" {
+  load_balancer_arn = aws_lb.main_load_balancer.arn
+  port              = "16686"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.jaeger.arn
   }
 }
 

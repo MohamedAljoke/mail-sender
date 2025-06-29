@@ -33,18 +33,11 @@ WORKDIR /app
 # Copy the binary from builder stage
 COPY --from=builder /app/worker .
 
-# Create non-root user
-RUN addgroup -g 1001 -S appgroup && \
-    adduser -S appuser -u 1001 -G appgroup
-
-# Change ownership
-RUN chown -R appuser:appgroup /app
-USER appuser
 
 EXPOSE 3002
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3002/health || exit 1
+  CMD wget --no-verbose --tries=1 --spider http://localhost:3002/worker/health || exit 1
 
 CMD ["./worker"]
