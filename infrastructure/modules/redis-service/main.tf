@@ -92,6 +92,10 @@ resource "aws_ecs_service" "redis" {
     assign_public_ip = false
   }
 
+  service_registries {
+    registry_arn = aws_service_discovery_service.redis.arn
+  }
+
   depends_on = [aws_ecs_task_definition.redis]
 
   tags = {
