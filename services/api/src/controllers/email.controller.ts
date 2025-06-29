@@ -2,8 +2,6 @@ import { Request, Response } from "express";
 import { IMessageBroker, IMessage } from "../infrastructure/broker";
 import { IRedisService } from "../infrastructure/redis";
 import { IWebSocketService } from "../infrastructure/websocket";
-import { logger } from "../shared/logger";
-import { DomainError } from "../shared/errors";
 import { EmailJobRequest } from "../schemas/email.schema";
 import { SubmitEmailUseCase } from "../usecases/email/submit-email.usecase";
 import { GetJobHistoryUseCase } from "../usecases/email/get-job-history.usecase";

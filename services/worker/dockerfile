@@ -3,6 +3,9 @@ FROM golang:1.23-alpine AS builder
 
 WORKDIR /app
 
+# Install git for private modules (if needed)
+RUN apk add --no-cache git
+
 # Copy go mod files
 COPY go.mod go.sum ./
 
@@ -10,28 +13,32 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY cmd/ ./cmd/
+COPY . .
 
-# Build the application
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o worker ./cmd/main.go
+# Build the application with optimizations
+RUN CGO_ENABLED=0 GOOS=linux go build \
+    -a -installsuffix cgo \
+    -ldflags="-w -s" \
+    -o worker \
+    ./cmd/worker
 
 # Runtime stage
 FROM alpine:latest
 
-# Install ca-certificates for HTTPS calls
-RUN apk --no-cache add ca-certificates
+# Install ca-certificates for HTTPS calls and wget for health checks
+RUN apk --no-cache add ca-certificates wget
 
-WORKDIR /root/
+WORKDIR /app
 
 # Copy the binary from builder stage
 COPY --from=builder /app/worker .
 
 # Create non-root user
-RUN addgroup -g 1001 -S appgroup
-RUN adduser -S appuser -u 1001
+RUN addgroup -g 1001 -S appgroup && \
+    adduser -S appuser -u 1001 -G appgroup
 
 # Change ownership
-RUN chown -R appuser:appgroup /root/
+RUN chown -R appuser:appgroup /app
 USER appuser
 
 EXPOSE 3002

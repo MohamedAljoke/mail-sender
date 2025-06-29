@@ -81,7 +81,7 @@ class Application {
     logger.info({ message: "Setting up routes..." });
 
     // Health endpoints
-    this.httpService.addRoutes("/", createHealthRoutes());
+    this.httpService.addRoutes("/", createHealthRoutes(this.redisService, this.messageBroker));
 
     // Email API routes
     this.httpService.addRoutes(
