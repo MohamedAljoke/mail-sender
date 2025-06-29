@@ -66,11 +66,8 @@ func (rh *RetryHandlerUseCaseImpl) HandleRetry(ctx context.Context, job *models.
 		span.RecordError(statusErr)
 	}
 
-	// Calculate retry delay (exponential backoff)
-	retryDelaySeconds := time.Duration(job.RetryCount*job.RetryCount) * time.Second
-	if retryDelaySeconds > 30*time.Second {
-		retryDelaySeconds = 30 * time.Second // Cap at 30 seconds
-	}
+	// Fixed retry delay of 1 minute
+	retryDelaySeconds := 1 * time.Minute
 
 	log.Printf("Job %s will retry in %v (attempt %d/%d)", job.JobID, retryDelaySeconds, job.RetryCount, job.MaxRetries)
 

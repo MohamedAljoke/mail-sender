@@ -40,7 +40,7 @@ export class SubmitEmailUseCase {
           created_at: createdAt,
           status: "pending",
           retry_count: 0,
-          max_retries: 3,
+          max_retries: 2,
           history: [
             {
               status: "pending",
@@ -59,7 +59,7 @@ export class SubmitEmailUseCase {
         created_at: createdAt,
         updated_at: createdAt,
         retry_count: 0,
-        max_retries: 3,
+        max_retries: 2,
         history: [
           {
             status: "queued",
