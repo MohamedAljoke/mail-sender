@@ -18,6 +18,15 @@ export const envSchema = z.object({
   OTEL_EXPORTER_JAEGER_ENDPOINT: z.string().url(),
   OTEL_SERVICE_NAME: z.string(),
   OTEL_RESOURCE_ATTRIBUTES: z.string(),
+  
+  // Message broker configuration
+  MESSAGE_BROKER_TYPE: z.enum(["rabbitmq", "sqs"]).optional().default("rabbitmq"),
+  
+  // AWS SQS configuration (optional)
+  AWS_REGION: z.string().optional(),
+  AWS_ACCESS_KEY_ID: z.string().optional(),
+  AWS_SECRET_ACCESS_KEY: z.string().optional(),
+  AWS_SQS_ENDPOINT: z.string().optional(), // For LocalStack
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
