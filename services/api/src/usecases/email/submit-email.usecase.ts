@@ -59,6 +59,7 @@ export class SubmitEmailUseCase {
         created_at: createdAt,
         updated_at: createdAt,
         retry_count: 0,
+        max_retries: 3,
         history: [
           {
             status: "queued",

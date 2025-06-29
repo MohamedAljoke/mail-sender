@@ -9,6 +9,7 @@ export interface JobStatus {
   created_at: string;
   updated_at: string;
   retry_count?: number;
+  max_retries?: number;
   error_message?: string;
   history: Array<{
     status: string;

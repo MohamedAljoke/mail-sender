@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/smtp"
 	"strconv"
+	"strings"
 	"time"
 
 	"task-scheduler-worker/internal/domain/errors"
@@ -31,6 +32,11 @@ func (s *SMTPService) SendEmail(ctx context.Context, job *models.EmailJob) error
 	}
 
 	if err := s.ValidateConfig(); err != nil {
+		return err
+	}
+
+	// Error simulation for testing
+	if err := s.simulateErrorForTestingEmails(job); err != nil {
 		return err
 	}
 
@@ -192,4 +198,21 @@ func (s *SMTPService) ValidateConfig() error {
 // GetConfig returns the email configuration
 func (s *SMTPService) GetConfig() *EmailConfig {
 	return s.config
+}
+
+// simulateErrorForTestingEmails simulates errors for specific test email addresses
+func (s *SMTPService) simulateErrorForTestingEmails(job *models.EmailJob) error {
+	// Simulate error for error-1@email.com only on first retry (retry_count == 0)
+	if strings.Contains(job.To, "error-1@email.com") && job.RetryCount == 0 {
+		return errors.NewSMTPErrorWithCause("simulated error for error-1@email.com on first retry", 
+			fmt.Errorf("test error simulation: first retry failure"))
+	}
+	
+	// Simulate error for error@email.com on all retries
+	if strings.Contains(job.To, "error@email.com") {
+		return errors.NewSMTPErrorWithCause("simulated error for error@email.com", 
+			fmt.Errorf("test error simulation: persistent failure"))
+	}
+	
+	return nil
 }
