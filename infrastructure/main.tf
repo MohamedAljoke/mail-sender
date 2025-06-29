@@ -66,6 +66,7 @@ module "worker_service" {
   task_cpu = 256
   task_memory = 512
   desired_count = 1
+  target_group_arn = module.alb.worker_target_group_arn
   environment_variables = [
     {
       name  = "PORT"

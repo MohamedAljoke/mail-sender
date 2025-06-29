@@ -30,7 +30,7 @@ resource "aws_ecs_task_definition" "worker" {
       }
 
       healthCheck = {
-        command     = ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${var.container_port}/health || exit 1"]
+        command     = ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${var.container_port}/worker/health || exit 1"]
         interval    = 30
         timeout     = 5
         retries     = 3
@@ -90,7 +90,14 @@ resource "aws_ecs_service" "worker" {
     assign_public_ip = false
   }
 
-  # Worker doesn't use load balancer
+  dynamic "load_balancer" {
+    for_each = var.target_group_arn != null ? [1] : []
+    content {
+      target_group_arn = var.target_group_arn
+      container_name   = "${var.project_name}-${var.service_name}"
+      container_port   = var.container_port
+    }
+  }
 
   depends_on = [aws_ecs_task_definition.worker]
 

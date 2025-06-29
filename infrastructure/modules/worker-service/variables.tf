@@ -97,4 +97,8 @@ variable "environment_variables" {
   default = []
 }
 
-# Worker service doesn't need ALB variables 
+variable "target_group_arn" {
+  description = "The ARN of the target group for load balancer"
+  type        = string
+  default     = null
+}

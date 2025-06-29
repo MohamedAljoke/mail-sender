@@ -65,7 +65,7 @@ resource "aws_lb_target_group" "api" {
     healthy_threshold   = 2
     interval            = 30
     matcher             = "200"
-    path                = "/health"
+    path                = "/api/health"
     port                = "traffic-port"
     protocol            = "HTTP"
     timeout             = 5
@@ -130,7 +130,7 @@ resource "aws_lb_listener_rule" "mailhog" {
 
   condition {
     path_pattern {
-      values = ["/mailhog/*"]
+      values = ["/mailhog", "/mailhog/*"]
     }
   }
 }
@@ -147,7 +147,7 @@ resource "aws_lb_target_group" "worker" {
     healthy_threshold   = 2
     interval            = 30
     matcher             = "200"
-    path                = "/health"
+    path                = "/worker/health"
     port                = "traffic-port"
     protocol            = "HTTP"
     timeout             = 5
@@ -171,7 +171,7 @@ resource "aws_lb_listener_rule" "worker" {
 
   condition {
     path_pattern {
-      values = ["/worker/*"]
+      values = ["/worker", "/worker/*"]
     }
   }
 }
@@ -212,7 +212,7 @@ resource "aws_lb_listener_rule" "rabbitmq" {
 
   condition {
     path_pattern {
-      values = ["/rabbitmq/*"]
+      values = ["/rabbitmq", "/rabbitmq/*"]
     }
   }
 }
@@ -253,7 +253,7 @@ resource "aws_lb_listener_rule" "jaeger" {
 
   condition {
     path_pattern {
-      values = ["/jaeger/*"]
+      values = ["/jaeger", "/jaeger/*"]
     }
   }
 }

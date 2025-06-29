@@ -82,6 +82,7 @@ class Application {
 
     // Health endpoints
     this.httpService.addRoutes("/", createHealthRoutes(this.redisService, this.messageBroker));
+    this.httpService.addRoutes("/api", createHealthRoutes(this.redisService, this.messageBroker));
 
     // Email API routes
     this.httpService.addRoutes(
