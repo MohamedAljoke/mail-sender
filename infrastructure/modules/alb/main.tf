@@ -134,3 +134,85 @@ resource "aws_lb_listener_rule" "mailhog" {
     }
   }
 }
+
+resource "aws_lb_target_group" "worker" {
+  name        = "${var.project_name}-worker-tg"
+  port        = 3002
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/health"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name        = "${var.project_name}-worker-tg"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_listener_rule" "worker" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 300
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.worker.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/worker/*"]
+    }
+  }
+}
+
+resource "aws_lb_target_group" "rabbitmq" {
+  name        = "${var.project_name}-rabbitmq-tg"
+  port        = 15672
+  protocol    = "HTTP"
+  vpc_id      = var.vpc_id
+  target_type = "ip"
+
+  health_check {
+    enabled             = true
+    healthy_threshold   = 2
+    interval            = 30
+    matcher             = "200"
+    path                = "/"
+    port                = "traffic-port"
+    protocol            = "HTTP"
+    timeout             = 5
+    unhealthy_threshold = 2
+  }
+
+  tags = {
+    Name        = "${var.project_name}-rabbitmq-tg"
+    Environment = var.environment
+  }
+}
+
+resource "aws_lb_listener_rule" "rabbitmq" {
+  listener_arn = aws_lb_listener.http.arn
+  priority     = 400
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.rabbitmq.arn
+  }
+
+  condition {
+    path_pattern {
+      values = ["/rabbitmq/*"]
+    }
+  }
+}

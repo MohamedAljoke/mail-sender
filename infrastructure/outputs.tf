@@ -60,11 +60,7 @@ output "ecs_log_group_name" {
   value       = module.ecs_cluster.log_group_name
 }
 
-# ALB outputs
-output "alb_dns_name" {
-  description = "The DNS name of the Application Load Balancer"
-  value       = module.alb.alb_dns_name
-}
+
 
 output "alb_zone_id" {
   description = "The canonical hosted zone ID of the Application Load Balancer"
@@ -110,17 +106,17 @@ output "worker_service_name" {
 }
 
 # Frontend URL outputs
-output "frontend_url" {
-  description = "The URL to access the frontend application"
-  value       = "http://${module.alb.alb_dns_name}"
-}
+# output "frontend_url" {
+#   description = "The URL to access the frontend application"
+#   value       = "http://${module.alb.alb_dns_name}"
+# }
 
-output "api_base_url" {
-  description = "The base URL for API endpoints"
-  value       = "http://${module.alb.alb_dns_name}/api"
-}
+# output "api_base_url" {
+#   description = "The base URL for API endpoints"
+#   value       = "http://${module.alb.alb_dns_name}/api"
+# }
 
-output "websocket_url" {
-  description = "The WebSocket URL for real-time updates"
-  value       = "ws://${module.alb.alb_dns_name}/ws"
-} 
+# output "websocket_url" {
+#   description = "The WebSocket URL for real-time updates"
+#   value       = "ws://${module.alb.alb_dns_name}/ws"
+# } 

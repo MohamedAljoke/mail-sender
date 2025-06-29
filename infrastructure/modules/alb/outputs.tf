@@ -37,4 +37,24 @@ output "mailhog_target_group_arn" {
 output "mailhog_target_group_name" {
   description = "The name of the MailHog target group"
   value       = aws_lb_target_group.mailhog.name
+}
+
+output "worker_target_group_arn" {
+  description = "The ARN of the Worker target group"
+  value       = aws_lb_target_group.worker.arn
+}
+
+output "worker_target_group_name" {
+  description = "The name of the Worker target group"
+  value       = aws_lb_target_group.worker.name
+}
+
+output "rabbitmq_target_group_arn" {
+  description = "The ARN of the RabbitMQ target group"
+  value       = aws_lb_target_group.rabbitmq.arn
+}
+
+output "rabbitmq_target_group_name" {
+  description = "The name of the RabbitMQ target group"
+  value       = aws_lb_target_group.rabbitmq.name
 } 
