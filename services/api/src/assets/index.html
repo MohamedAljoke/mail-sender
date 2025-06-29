@@ -79,7 +79,7 @@
                 <a href="#" id="rabbitmq-link" target="_blank" class="btn btn-link">🐰 RabbitMQ Management</a>
                 <a href="#" id="jaeger-link" target="_blank" class="btn btn-link">📊 Jaeger Tracing</a>
                 <a href="/api/health" target="_blank" class="btn btn-link">🏥 API Health</a>
-                <a href="/worker/health" target="_blank" class="btn btn-link">⚙️ Worker Health</a>
+                <a href="#" id="worker-health-link" target="_blank" class="btn btn-link">⚙️ Worker Health</a>
             </div>
         </footer>
     </div>
@@ -93,6 +93,7 @@
             document.getElementById('mailhog-link').href = `${protocol}//${hostname}:8025`;
             document.getElementById('rabbitmq-link').href = `${protocol}//${hostname}:15672`;
             document.getElementById('jaeger-link').href = `${protocol}//${hostname}:16686`;
+            document.getElementById('worker-health-link').href = `${protocol}//${hostname}:3002/health`;
         });
     </script>
     <script src="script.js"></script>

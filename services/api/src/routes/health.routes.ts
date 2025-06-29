@@ -14,7 +14,7 @@ export function createHealthRoutes(
   router.get("/health", async (req: Request, res: Response) => {
     try {
       const healthResponse = await healthService.checkHealth();
-      
+
       // Set status code based on health
       let statusCode = 200;
       if (healthResponse.status === "unhealthy") {
@@ -22,14 +22,14 @@ export function createHealthRoutes(
       } else if (healthResponse.status === "degraded") {
         statusCode = 200; // Still operational
       }
-      
+
       res.status(statusCode).json(healthResponse);
     } catch (error) {
       res.status(503).json({
         status: "unhealthy",
         service: "api",
         timestamp: new Date(),
-        error: error instanceof Error ? error.message : "Health check failed"
+        error: error instanceof Error ? error.message : "Health check failed",
       });
     }
   });

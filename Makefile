@@ -15,7 +15,8 @@ help:
 	@echo "  build-worker  - Build Worker Docker image"
 	@echo "  push-api      - Push API image to ECR"
 	@echo "  push-worker   - Push Worker image to ECR" 
-	@echo "  deploy        - Build and push both images to ECR"
+	@echo "  deploy        - Build, push images and update ECS services"
+	@echo "  update-services - Force new deployment of ECS services"
 
 down:
 	docker-compose down
@@ -52,5 +53,9 @@ push-worker: build-worker
 	docker tag $(PROJECT_NAME)-worker:latest $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
 	docker push $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
 
-deploy: ecr-login push-api push-worker tf-deploy
-	@echo "Images pushed to ECR successfully!"
+deploy: ecr-login push-api push-worker tf-deploy update-services
+	@echo "Images pushed to ECR and services updated successfully!"
+
+update-services:
+	aws ecs update-service --cluster $(PROJECT_NAME)-cluster --service $(PROJECT_NAME)-api --force-new-deployment --region $(AWS_REGION)
+	aws ecs update-service --cluster $(PROJECT_NAME)-cluster --service $(PROJECT_NAME)-worker --force-new-deployment --region $(AWS_REGION)

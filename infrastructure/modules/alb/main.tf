@@ -44,6 +44,13 @@ resource "aws_security_group" "alb_sg" {
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
+  
+  ingress {
+    from_port   = 3002
+    to_port     = 3002
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   egress {
     from_port   = 0
     to_port     = 0
@@ -98,6 +105,17 @@ resource "aws_lb_listener" "jaeger" {
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.jaeger.arn
+  }
+}
+
+resource "aws_lb_listener" "worker" {
+  load_balancer_arn = aws_lb.main_load_balancer.arn
+  port              = "3002"
+  protocol          = "HTTP"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.worker.arn
   }
 }
 
