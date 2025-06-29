@@ -119,4 +119,35 @@ output "worker_service_name" {
 # output "websocket_url" {
 #   description = "The WebSocket URL for real-time updates"
 #   value       = "ws://${module.alb.alb_dns_name}/ws"
-# } 
+# }
+
+# ALB DNS and Service URLs
+output "alb_dns_name" {
+  description = "The DNS name of the Application Load Balancer"
+  value       = module.alb.alb_dns_name
+}
+
+output "mailhog_url" {
+  description = "URL to access MailHog UI"
+  value       = "http://${module.alb.alb_dns_name}/mailhog/"
+}
+
+output "rabbitmq_url" {
+  description = "URL to access RabbitMQ Management UI"
+  value       = "http://${module.alb.alb_dns_name}/rabbitmq/"
+}
+
+output "jaeger_url" {
+  description = "URL to access Jaeger Tracing UI"
+  value       = "http://${module.alb.alb_dns_name}/jaeger/"
+}
+
+output "api_health_url" {
+  description = "URL to check API health"
+  value       = "http://${module.alb.alb_dns_name}/api/health"
+}
+
+output "worker_health_url" {
+  description = "URL to check Worker health"
+  value       = "http://${module.alb.alb_dns_name}/worker/health"
+} 

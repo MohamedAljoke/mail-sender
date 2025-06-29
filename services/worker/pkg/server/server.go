@@ -62,8 +62,11 @@ func (s *HTTPServer) Shutdown(ctx context.Context) error {
 func (s *HTTPServer) setupRoutes() *mux.Router {
 	router := mux.NewRouter()
 
+	// Health endpoints - support both root and /worker/ prefix for ALB compatibility
 	router.HandleFunc("/health", s.healthHandler.HealthCheck).Methods("GET")
 	router.HandleFunc("/ready", s.healthHandler.ReadinessCheck).Methods("GET")
+	router.HandleFunc("/worker/health", s.healthHandler.HealthCheck).Methods("GET")
+	router.HandleFunc("/worker/ready", s.healthHandler.ReadinessCheck).Methods("GET")
 
 	router.Use(s.loggingMiddleware)
 
