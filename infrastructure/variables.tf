@@ -9,3 +9,15 @@ variable "environment" {
   type        = string
   default     = "dev"
 }
+
+variable "api_image_tag" {
+  description = "The Docker image tag for the API service"
+  type        = string
+  default     = "latest"
+}
+
+variable "worker_image_tag" {
+  description = "The Docker image tag for the Worker service"
+  type        = string
+  default     = "latest"
+}
