@@ -58,37 +58,61 @@ export class RedisService implements IRedisService {
   }
 
   async connect(): Promise<void> {
-    try {
-      logger.info({ message: "Connecting to Redis..." });
+    const maxRetries = 10;
+    const retryDelay = 5000; // 5 seconds
+    let attempt = 0;
 
-      this.client = createClient({ url: this.url });
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        logger.info({ 
+          message: "Connecting to Redis...", 
+          context: { attempt, maxRetries, url: this.url.replace(/:\/\/.*@/, '://***@') }
+        });
 
-      this.client.on("error", (err) => {
-        logger.error({ message: "Redis Client Error", context: err });
-        this.connected = false;
-      });
+        this.client = createClient({ url: this.url });
 
-      this.client.on("connect", () => {
-        logger.info({ message: "Redis client connected" });
-        this.connected = true;
-        this.reconnectAttempts = 0;
-      });
+        this.client.on("error", (err) => {
+          logger.error({ message: "Redis Client Error", context: err });
+          this.connected = false;
+        });
 
-      this.client.on("disconnect", () => {
-        logger.warn({ message: "Redis client disconnected" });
-        this.connected = false;
-        this.handleReconnection();
-      });
+        this.client.on("connect", () => {
+          logger.info({ message: "Redis client connected" });
+          this.connected = true;
+          this.reconnectAttempts = 0;
+        });
 
-      await this.client.connect();
+        this.client.on("disconnect", () => {
+          logger.warn({ message: "Redis client disconnected" });
+          this.connected = false;
+          this.handleReconnection();
+        });
 
-      this.subscriber = this.client.duplicate();
-      await this.subscriber.connect();
+        await this.client.connect();
 
-      logger.info({ message: "✅ Successfully connected to Redis" });
-    } catch (error) {
-      logger.error({ message: "Failed to connect to Redis", context: error });
-      throw error;
+        this.subscriber = this.client.duplicate();
+        await this.subscriber.connect();
+
+        logger.info({ message: "✅ Successfully connected to Redis" });
+        return;
+      } catch (error) {
+        logger.error({
+          message: `Failed to connect to Redis (attempt ${attempt}/${maxRetries})`,
+          context: error,
+        });
+
+        if (attempt >= maxRetries) {
+          throw new Error(`Failed to connect to Redis after ${maxRetries} attempts: ${error}`);
+        }
+
+        logger.info({ 
+          message: `Retrying Redis connection in ${retryDelay}ms...`,
+          context: { nextAttempt: attempt + 1, maxRetries }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
 

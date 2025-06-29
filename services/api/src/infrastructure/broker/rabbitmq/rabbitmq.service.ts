@@ -13,28 +13,51 @@ export class RabbitMQService implements IMessageBroker {
   }
 
   async connect(): Promise<void> {
-    try {
-      logger.info({ message: "Connecting to RabbitMQ..." });
-      this.connection = await amqp.connect(this.url);
-      this.defaultChannel = await this.connection.createChannel();
-      this.connection.on("error", (err: Error) => {
-        logger.error({ message: "RabbitMQ connection error", context: err });
-      });
+    const maxRetries = 10;
+    const retryDelay = 5000; // 5 seconds
+    let attempt = 0;
 
-      this.connection.on("close", () => {
-        logger.warn({ message: "RabbitMQ connection closed" });
-        this.connection = null;
-        this.defaultChannel = null;
-        this.channels.clear();
-      });
+    while (attempt < maxRetries) {
+      try {
+        attempt++;
+        logger.info({ 
+          message: "Connecting to RabbitMQ...", 
+          context: { attempt, maxRetries, url: this.url.replace(/:\/\/.*@/, '://***@') }
+        });
+        
+        this.connection = await amqp.connect(this.url);
+        this.defaultChannel = await this.connection.createChannel();
+        
+        this.connection.on("error", (err: Error) => {
+          logger.error({ message: "RabbitMQ connection error", context: err });
+        });
 
-      logger.info({ message: "✅ Successfully connected to RabbitMQ" });
-    } catch (error) {
-      logger.error({
-        message: "Failed to connect to RabbitMQ",
-        context: error,
-      });
-      throw error;
+        this.connection.on("close", () => {
+          logger.warn({ message: "RabbitMQ connection closed" });
+          this.connection = null;
+          this.defaultChannel = null;
+          this.channels.clear();
+        });
+
+        logger.info({ message: "✅ Successfully connected to RabbitMQ" });
+        return;
+      } catch (error) {
+        logger.error({
+          message: `Failed to connect to RabbitMQ (attempt ${attempt}/${maxRetries})`,
+          context: error,
+        });
+
+        if (attempt >= maxRetries) {
+          throw new Error(`Failed to connect to RabbitMQ after ${maxRetries} attempts: ${error}`);
+        }
+
+        logger.info({ 
+          message: `Retrying RabbitMQ connection in ${retryDelay}ms...`,
+          context: { nextAttempt: attempt + 1, maxRetries }
+        });
+        
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
   }
 

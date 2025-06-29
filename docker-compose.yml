@@ -16,14 +16,18 @@ services:
       - OTEL_SERVICE_NAME=email-api
       - OTEL_RESOURCE_ATTRIBUTES=service.name=email-api,service.version=1.0.0
     depends_on:
-      - rabbitmq
-      - redis
-      - jaeger
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
   rabbitmq:
     image: rabbitmq:3.13-management
     ports:
@@ -53,10 +57,14 @@ services:
       - OTEL_SERVICE_NAME=email-worker
       - OTEL_RESOURCE_ATTRIBUTES=service.name=email-worker,service.version=1.0.0
     depends_on:
-      - rabbitmq
-      - redis
-      - mailhog
-      - jaeger
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mailhog:
+        condition: service_healthy
+      jaeger:
+        condition: service_healthy
     healthcheck:
       test:
         [
@@ -70,6 +78,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 60s
 
   redis:
     image: redis:7-alpine

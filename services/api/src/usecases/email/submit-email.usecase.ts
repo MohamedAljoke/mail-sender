@@ -73,7 +73,7 @@ export class SubmitEmailUseCase {
       await withSpan(
         "broker.sendMessage",
         async () => {
-          await this.messageBroker.sendMessage("email_queue", emailMessage);
+          await this.messageBroker.sendMessage("email_tasks", emailMessage);
         },
         {
           "broker.operation": "sendMessage",
