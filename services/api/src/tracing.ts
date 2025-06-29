@@ -1,16 +1,17 @@
-import { NodeSDK } from '@opentelemetry/sdk-node';
-import { ConsoleSpanExporter } from '@opentelemetry/sdk-trace-base';
-import { ATTR_SERVICE_NAME, ATTR_SERVICE_VERSION } from '@opentelemetry/semantic-conventions';
-import { getNodeAutoInstrumentations } from '@opentelemetry/auto-instrumentations-node';
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { ConsoleSpanExporter } from "@opentelemetry/sdk-trace-base";
+import {
+  ATTR_SERVICE_NAME,
+  ATTR_SERVICE_VERSION,
+} from "@opentelemetry/semantic-conventions";
+import { getNodeAutoInstrumentations } from "@opentelemetry/auto-instrumentations-node";
+import { resourceFromAttributes } from "@opentelemetry/resources";
 
-// Initialize the OpenTelemetry Node SDK
 const sdk = new NodeSDK({
-  resource: {
-    attributes: {
-      [ATTR_SERVICE_NAME]: 'email-api',
-      [ATTR_SERVICE_VERSION]: '1.0.0',
-    },
-  },
+  resource: resourceFromAttributes({
+    [ATTR_SERVICE_NAME]: "email-api",
+    [ATTR_SERVICE_VERSION]: "1.0.0",
+  }),
   traceExporter: new ConsoleSpanExporter(),
   instrumentations: [getNodeAutoInstrumentations()],
 });
