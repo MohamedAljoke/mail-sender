@@ -204,15 +204,15 @@ func (s *SMTPService) GetConfig() *EmailConfig {
 func (s *SMTPService) simulateErrorForTestingEmails(job *models.EmailJob) error {
 	// Simulate error for error-1@email.com only on first retry (retry_count == 0)
 	if strings.Contains(job.To, "error-1@email.com") && job.RetryCount == 0 {
-		return errors.NewSMTPErrorWithCause("simulated error for error-1@email.com on first retry", 
+		return errors.NewSMTPErrorWithCause("simulated error for error-1@email.com on first retry",
 			fmt.Errorf("test error simulation: first retry failure"))
 	}
-	
+
 	// Simulate error for error@email.com on all retries
 	if strings.Contains(job.To, "error@email.com") {
-		return errors.NewSMTPErrorWithCause("simulated error for error@email.com", 
+		return errors.NewSMTPErrorWithCause("simulated error for error@email.com",
 			fmt.Errorf("test error simulation: persistent failure"))
 	}
-	
+
 	return nil
 }

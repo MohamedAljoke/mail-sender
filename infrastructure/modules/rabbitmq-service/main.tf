@@ -31,6 +31,10 @@ resource "aws_ecs_task_definition" "rabbitmq" {
         {
           name  = "RABBITMQ_DEFAULT_PASS"
           value = "password"
+        },
+        {
+          name  = "RABBITMQ_ERLANG_COOKIE"
+          value = "rabbitmq-cookie-secret"
         }
       ]
 
