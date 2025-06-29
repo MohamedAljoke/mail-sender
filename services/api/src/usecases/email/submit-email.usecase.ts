@@ -5,7 +5,6 @@ import { IWebSocketService } from "../../infrastructure/websocket";
 import { logger } from "../../shared/logger";
 import { withSpan } from "../../shared/tracing";
 import { EmailJobRequest } from "../../schemas/email.schema";
-import { EmailJobMessage } from "../../controllers/email.controller";
 
 export interface SubmitEmailUseCaseResult {
   jobId: string;
@@ -32,13 +31,23 @@ export class SubmitEmailUseCase {
         "email.created_at": createdAt,
       });
 
-      const emailMessage: EmailJobMessage = {
+      const emailMessage = {
         content: {
           job_id: jobId,
           to,
           subject,
           body,
           created_at: createdAt,
+          status: "pending",
+          retry_count: 0,
+          max_retries: 3,
+          history: [
+            {
+              status: "pending",
+              timestamp: createdAt,
+              message: "Job created",
+            },
+          ],
         },
       };
 

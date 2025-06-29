@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"time"
 )
 
@@ -10,7 +11,8 @@ type EmailJob struct {
 	To          string            `json:"to"`
 	Subject     string            `json:"subject"`
 	Body        string            `json:"body"`
-	CreatedAt   time.Time         `json:"created_at"`
+	CreatedAt   time.Time         `json:"-"`
+	CreatedAtStr string           `json:"created_at"`
 	UpdatedAt   time.Time         `json:"updated_at"`
 	Status      JobStatus         `json:"status"`
 	RetryCount  int               `json:"retry_count"`
@@ -138,4 +140,32 @@ type ValidationError struct {
 
 func (e *ValidationError) Error() string {
 	return e.Message
+}
+
+// UnmarshalJSON custom unmarshaling to handle string timestamps from API
+func (j *EmailJob) UnmarshalJSON(data []byte) error {
+	type Alias EmailJob
+	aux := &struct {
+		*Alias
+	}{
+		Alias: (*Alias)(j),
+	}
+	
+	if err := json.Unmarshal(data, &aux); err != nil {
+		return err
+	}
+	
+	// Convert string timestamp to time.Time
+	if j.CreatedAtStr != "" {
+		if t, err := time.Parse(time.RFC3339, j.CreatedAtStr); err == nil {
+			j.CreatedAt = t
+		}
+	}
+	
+	// Set default values if not provided
+	if j.UpdatedAt.IsZero() {
+		j.UpdatedAt = j.CreatedAt
+	}
+	
+	return nil
 }

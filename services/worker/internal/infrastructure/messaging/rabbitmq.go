@@ -152,8 +152,18 @@ func (r *RabbitMQService) ConsumeEmailJobs(ctx context.Context, handler func(*mo
 					continue
 				}
 
+				// First unmarshal to get the content wrapper
+				var messageWrapper struct {
+					Content json.RawMessage `json:"content"`
+				}
+				if err := json.Unmarshal(msg.Body, &messageWrapper); err != nil {
+					// Log error but continue processing
+					continue
+				}
+
+				// Then unmarshal the actual EmailJob from content
 				var emailJob models.EmailJob
-				if err := json.Unmarshal(msg.Body, &emailJob); err != nil {
+				if err := json.Unmarshal(messageWrapper.Content, &emailJob); err != nil {
 					// Log error but continue processing
 					continue
 				}
