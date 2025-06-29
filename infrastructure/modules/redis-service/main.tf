@@ -92,14 +92,6 @@ resource "aws_ecs_service" "redis" {
     assign_public_ip = false
   }
 
-  # Service Discovery Registration
-  dynamic "service_registries" {
-    for_each = var.service_discovery_arn != "" ? [1] : []
-    content {
-      registry_arn = var.service_discovery_arn
-    }
-  }
-
   depends_on = [aws_ecs_task_definition.redis]
 
   tags = {
@@ -111,4 +103,18 @@ resource "aws_ecs_service" "redis" {
   lifecycle {
     ignore_changes = [desired_count]  
   }
+}
+
+resource "aws_service_discovery_service" "redis" {
+  name = var.service_name
+
+  dns_config {
+    namespace_id = var.service_discovery_namespace_id
+    dns_records {
+      ttl  = 10
+      type = "A"
+    }
+    routing_policy = "MULTIVALUE"
+  }
+
 }

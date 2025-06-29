@@ -66,8 +66,8 @@ variable "desired_count" {
   default     = 1
 }
 
-variable "service_discovery_arn" {
-  description = "ARN of the service discovery service"
+
+variable "service_discovery_namespace_id" {
+  description = "The ID of the service discovery namespace"
   type        = string
-  default     = ""
 }

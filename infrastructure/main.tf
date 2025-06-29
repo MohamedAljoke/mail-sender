@@ -107,7 +107,7 @@ module "api_service" {
   container_port = 3000
   task_cpu = 256
   task_memory = 512
-  desired_count = 2
+  desired_count = 1
   alb_security_group_id = module.alb.alb_security_group_id
   target_group_arn = module.alb.api_target_group_arn
   
@@ -147,7 +147,7 @@ module "rabbitmq_service" {
   task_cpu = 512
   task_memory = 1024
   desired_count = 1
-  service_discovery_arn = aws_service_discovery_service.rabbitmq.arn
+  service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.main.id
 }
 
 module "mailhog_service" {
@@ -185,42 +185,6 @@ module "redis_service" {
   task_cpu = 256
   task_memory = 512
   desired_count = 1
-  service_discovery_arn = aws_service_discovery_service.redis.arn
+  service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.main.id
 }
 
-# RabbitMQ Service Discovery
-resource "aws_service_discovery_service" "rabbitmq" {
-  name = "rabbitmq"
-  
-  dns_config {
-    namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    
-    dns_records {
-      ttl  = 60
-      type = "A"
-    }
-  }
-  
-  tags = {
-    Name = "${local.project_name}-rabbitmq-discovery"
-    Environment = var.environment
-  }
-}
-
-resource "aws_service_discovery_service" "redis" {
-  name = "redis"
-  
-  dns_config {
-    namespace_id = aws_service_discovery_private_dns_namespace.main.id
-    
-    dns_records {
-      ttl  = 60
-      type = "A"
-    }
-  }
-  
-  tags = {
-    Name = "${local.project_name}-redis-discovery"
-    Environment = var.environment
-  }
-}

@@ -1,14 +1,21 @@
 AWS_REGION ?= us-east-1
 ENVIRONMENT ?= dev
+PROJECT_NAME ?= mail-sender
 
-.PHONY: help plan deploy destroy
+.PHONY: help plan deploy destroy ecr-login build-api build-worker push-api push-worker deploy
 help: 
 	@echo "  up            - Start all services with docker-compose"
 	@echo "  down          - Stops all services with docker-compose"
-	@echo "  tf-init          - init terraform  for infrastructure"
-	@echo "  tf-plan          - Show terraform plan for infrastructure"
-	@echo "  tf-deploy        - Deploy infrastructure to AWS"
-	@echo "  tf-destroy       - Destroy infrastructure"
+	@echo "  tf-init       - init terraform  for infrastructure"
+	@echo "  tf-plan       - Show terraform plan for infrastructure"
+	@echo "  tf-deploy     - Deploy infrastructure to AWS"
+	@echo "  tf-destroy    - Destroy infrastructure"
+	@echo "  ecr-login     - Login to ECR"
+	@echo "  build-api     - Build API Docker image"
+	@echo "  build-worker  - Build Worker Docker image"
+	@echo "  push-api      - Push API image to ECR"
+	@echo "  push-worker   - Push Worker image to ECR" 
+	@echo "  deploy        - Build and push both images to ECR"
 
 down:
 	docker-compose down
@@ -27,3 +34,23 @@ tf-deploy:
 
 tf-destroy:
 	cd infrastructure && terraform destroy -auto-approve
+
+ecr-login:
+	aws ecr get-login-password --region $(AWS_REGION) | docker login --username AWS --password-stdin $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com
+
+build-api:
+	docker build -t $(PROJECT_NAME)-api:latest -f services/api/dockerfile services/api/
+
+build-worker:
+	docker build -t $(PROJECT_NAME)-worker:latest -f services/worker/dockerfile services/worker/
+
+push-api: build-api
+	docker tag $(PROJECT_NAME)-api:latest $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-api:latest
+	docker push $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-api:latest
+
+push-worker: build-worker
+	docker tag $(PROJECT_NAME)-worker:latest $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
+	docker push $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
+
+deploy: ecr-login push-api push-worker
+	@echo "Images pushed to ECR successfully!"
