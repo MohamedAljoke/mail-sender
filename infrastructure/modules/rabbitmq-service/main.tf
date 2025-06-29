@@ -35,6 +35,14 @@ resource "aws_ecs_task_definition" "rabbitmq" {
         {
           name  = "RABBITMQ_ERLANG_COOKIE"
           value = "rabbitmq-cookie-secret"
+        },
+        {
+          name  = "RABBITMQ_USE_LONGNAME"
+          value = "true"
+        },
+        {
+          name  = "RABBITMQ_NODE_TYPE"
+          value = "stats"
         }
       ]
 
@@ -54,9 +62,28 @@ resource "aws_ecs_task_definition" "rabbitmq" {
         retries     = 5
         startPeriod = 120
       }
+      
+      mountPoints = [
+        {
+          sourceVolume  = "rabbitmq-data"
+          containerPath = "/var/lib/rabbitmq"
+          readOnly      = false
+        }
+      ]
+      
       essential = true
+      user = "0:0"
     }
   ])
+
+  volume {
+    name = "rabbitmq-data"
+    
+    efs_volume_configuration {
+      file_system_id = var.efs_file_system_id
+      root_directory = "/rabbitmq"
+    }
+  }
 
   tags = {
     Name        = "${var.project_name}-${var.service_name}-task"
