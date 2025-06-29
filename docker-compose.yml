@@ -38,6 +38,39 @@ services:
       timeout: 10s
       retries: 3
 
+  worker:
+    build:
+      context: ./services/worker
+    ports:
+      - "3002:3002"
+    environment:
+      - PORT=3002
+      - RABBITMQ_URL=amqp://admin:password@rabbitmq:5672
+      - REDIS_URL=redis://redis:6379
+      - SMTP_HOST=mailhog
+      - SMTP_PORT=1025
+      - OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14268/api/traces
+      - OTEL_SERVICE_NAME=email-worker
+      - OTEL_RESOURCE_ATTRIBUTES=service.name=email-worker,service.version=1.0.0
+    depends_on:
+      - rabbitmq
+      - redis
+      - mailhog
+      - jaeger
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--no-verbose",
+          "--tries=1",
+          "--spider",
+          "http://localhost:3002/health",
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   redis:
     image: redis:7-alpine
     ports:

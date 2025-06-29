@@ -1,11 +1,14 @@
 import { Request, Response } from "express";
 import { v4 as uuidv4 } from "uuid";
+import { trace, SpanStatusCode } from "@opentelemetry/api";
 import { IMessageBroker, IMessage } from "../infrastructure/broker";
 import { IRedisService, JobStatus } from "../infrastructure/redis";
 import { IWebSocketService } from "../infrastructure/websocket";
 import { logger } from "../shared/logger";
 import { DomainError } from "../shared/errors";
 import { EmailJobRequest } from "../schemas/email.schema";
+
+const tracer = trace.getTracer('email-controller', '1.0.0');
 
 export interface EmailJobMessage extends IMessage {
   content: {

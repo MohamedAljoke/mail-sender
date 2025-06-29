@@ -1,3 +1,6 @@
+// Initialize tracing before any other imports
+import "./tracing";
+
 import { env } from "./env.validator";
 import { ExpressHttpService } from "./server";
 import { IMessageBroker, createMessageBroker } from "./infrastructure/broker";

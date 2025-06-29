@@ -1,5 +1,5 @@
 const API_BASE_URL = '/api';
-const WS_URL = `ws://${window.location.host}/api/ws`;
+const WS_URL = `ws://${window.location.host}/ws`;
 let allJobs = JSON.parse(localStorage.getItem('allJobs') || '[]');
 let websocket = null;
 let reconnectAttempts = 0;
