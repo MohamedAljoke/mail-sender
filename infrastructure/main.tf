@@ -86,6 +86,18 @@ module "worker_service" {
     {
       name  = "SMTP_PORT"
       value = "1025"
+    },
+    {
+      name  = "OTEL_EXPORTER_JAEGER_ENDPOINT"
+      value = "http://jaeger.${local.project_name}.local:14268/api/traces"
+    },
+    {
+      name  = "OTEL_SERVICE_NAME"
+      value = "email-worker"
+    },
+    {
+      name  = "OTEL_RESOURCE_ATTRIBUTES"
+      value = "service.name=email-worker,service.version=1.0.0"
     }
   ]
 }
@@ -128,6 +140,18 @@ module "api_service" {
     {
       name  = "NODE_ENV"
       value = "production"
+    },
+    {
+      name  = "OTEL_EXPORTER_JAEGER_ENDPOINT"
+      value = "http://jaeger.${local.project_name}.local:14268/api/traces"
+    },
+    {
+      name  = "OTEL_SERVICE_NAME"
+      value = "email-api"
+    },
+    {
+      name  = "OTEL_RESOURCE_ATTRIBUTES"
+      value = "service.name=email-api,service.version=1.0.0"
     }
   ]
 }
@@ -185,6 +209,26 @@ module "redis_service" {
   task_cpu = 256
   task_memory = 512
   desired_count = 1
+  service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.main.id
+}
+
+module "jaeger_service" {
+  source = "./modules/jaeger-service"
+  project_name = local.project_name
+  service_name = "jaeger"
+  environment = var.environment
+  cluster_id = module.ecs_cluster.cluster_id
+  vpc_id = module.vpc.vpc_id
+  private_subnet_ids = module.vpc.app_subnet_ids
+  task_execution_role_arn = module.ecs_cluster.task_execution_role_arn
+  log_group_name = module.ecs_cluster.log_group_name
+  aws_region = var.aws_region
+  task_cpu = 512
+  task_memory = 1024
+  desired_count = 1
+  alb_security_group_id = module.alb.alb_security_group_id
+  target_group_arn = module.alb.jaeger_target_group_arn
+  allowed_security_groups = [module.api_service.security_group_id, module.worker_service.security_group_id]
   service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.main.id
 }
 

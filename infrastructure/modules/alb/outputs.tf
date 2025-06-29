@@ -9,6 +9,11 @@ output "alb_arn" {
 }
 
 
+output "alb_dns_name" {
+  description = "The DNS name of the Application Load Balancer"
+  value       = aws_lb.main_load_balancer.dns_name
+}
+
 output "alb_zone_id" {
   description = "The canonical hosted zone ID of the Application Load Balancer"
   value       = aws_lb.main_load_balancer.zone_id
@@ -57,4 +62,14 @@ output "rabbitmq_target_group_arn" {
 output "rabbitmq_target_group_name" {
   description = "The name of the RabbitMQ target group"
   value       = aws_lb_target_group.rabbitmq.name
+}
+
+output "jaeger_target_group_arn" {
+  description = "The ARN of the Jaeger target group"
+  value       = aws_lb_target_group.jaeger.arn
+}
+
+output "jaeger_target_group_name" {
+  description = "The name of the Jaeger target group"
+  value       = aws_lb_target_group.jaeger.name
 } 
