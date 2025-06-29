@@ -76,3 +76,8 @@ variable "efs_file_system_id" {
   description = "The ID of the EFS file system for persistent storage"
   type        = string
 }
+
+variable "efs_access_point_id" {
+  description = "The ID of the EFS access point for RabbitMQ"
+  type        = string
+}

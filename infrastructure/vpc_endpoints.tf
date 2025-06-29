@@ -126,3 +126,18 @@ resource "aws_vpc_endpoint" "s3" {
     Environment = var.environment
   }
 }
+
+# EFS VPC Endpoint (optional but recommended for better performance)
+resource "aws_vpc_endpoint" "efs" {
+  vpc_id              = module.vpc.vpc_id
+  service_name        = "com.amazonaws.${var.aws_region}.elasticfilesystem"
+  vpc_endpoint_type   = "Interface"
+  subnet_ids          = module.vpc.app_subnet_ids
+  security_group_ids  = [aws_security_group.vpc_endpoints.id]
+  private_dns_enabled = true
+
+  tags = {
+    Name = "${local.project_name}-efs-endpoint"
+    Environment = var.environment
+  }
+}

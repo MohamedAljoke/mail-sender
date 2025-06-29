@@ -81,7 +81,12 @@ resource "aws_ecs_task_definition" "rabbitmq" {
     
     efs_volume_configuration {
       file_system_id = var.efs_file_system_id
-      root_directory = "/rabbitmq"
+      root_directory = "/"
+      transit_encryption = "ENABLED"
+      authorization_config {
+        access_point_id = var.efs_access_point_id
+        iam = "DISABLED"
+      }
     }
   }
 
@@ -147,6 +152,10 @@ resource "aws_ecs_service" "rabbitmq" {
     assign_public_ip = false
   }
 
+  service_registries {
+    registry_arn = aws_service_discovery_service.rabbitmq.arn
+  }
+
 
   depends_on = [aws_ecs_task_definition.rabbitmq]
 
@@ -161,7 +170,7 @@ resource "aws_ecs_service" "rabbitmq" {
   }
 }
 
-resource "aws_service_discovery_service" "redis" {
+resource "aws_service_discovery_service" "rabbitmq" {
   name = var.service_name
 
   dns_config {
@@ -173,4 +182,9 @@ resource "aws_service_discovery_service" "redis" {
     routing_policy = "MULTIVALUE"
   }
 
+  tags = {
+    Name        = "${var.project_name}-${var.service_name}-service-discovery"
+    Environment = var.environment
+    Service     = var.service_name
+  }
 }

@@ -156,6 +156,81 @@ module "api_service" {
   ]
 }
 
+# EFS for RabbitMQ persistent storage
+resource "aws_efs_file_system" "rabbitmq" {
+  creation_token = "${local.project_name}-rabbitmq-efs"
+  
+  performance_mode = "generalPurpose"
+  throughput_mode  = "provisioned"
+  provisioned_throughput_in_mibps = 50
+
+  tags = {
+    Name = "${local.project_name}-rabbitmq-efs"
+    Environment = var.environment
+  }
+}
+
+resource "aws_efs_mount_target" "rabbitmq" {
+  count           = length(module.vpc.app_subnet_ids)
+  file_system_id  = aws_efs_file_system.rabbitmq.id
+  subnet_id       = module.vpc.app_subnet_ids[count.index]
+  security_groups = [aws_security_group.efs_rabbitmq.id]
+}
+
+resource "aws_efs_access_point" "rabbitmq" {
+  file_system_id = aws_efs_file_system.rabbitmq.id
+
+  posix_user {
+    gid = 0
+    uid = 0
+  }
+
+  root_directory {
+    path = "/rabbitmq"
+    creation_info {
+      owner_gid   = 0
+      owner_uid   = 0
+      permissions = "755"
+    }
+  }
+
+  tags = {
+    Name = "${local.project_name}-rabbitmq-access-point"
+    Environment = var.environment
+  }
+}
+
+resource "aws_security_group" "efs_rabbitmq" {
+  name_prefix = "${local.project_name}-rabbitmq-efs-"
+  vpc_id      = module.vpc.vpc_id
+  description = "Security group for RabbitMQ EFS"
+
+
+  ingress {
+    description = "NFS traffic from private subnets"
+    from_port   = 2049
+    to_port     = 2049
+    protocol    = "tcp"
+    cidr_blocks = [module.vpc.vpc_cidr_block]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "${local.project_name}-rabbitmq-efs-sg"
+    Environment = var.environment
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 module "rabbitmq_service" {
   source = "./modules/rabbitmq-service"
   project_name = local.project_name
@@ -172,6 +247,19 @@ module "rabbitmq_service" {
   task_memory = 1024
   desired_count = 1
   service_discovery_namespace_id = aws_service_discovery_private_dns_namespace.main.id
+  efs_file_system_id = aws_efs_file_system.rabbitmq.id
+  efs_access_point_id = aws_efs_access_point.rabbitmq.id
+}
+
+# Security group rule to allow RabbitMQ to access EFS
+resource "aws_security_group_rule" "rabbitmq_to_efs" {
+  type                     = "ingress"
+  from_port                = 2049
+  to_port                  = 2049
+  protocol                 = "tcp"
+  source_security_group_id = module.rabbitmq_service.security_group_id
+  security_group_id        = aws_security_group.efs_rabbitmq.id
+  description              = "Allow RabbitMQ tasks to access EFS"
 }
 
 module "mailhog_service" {

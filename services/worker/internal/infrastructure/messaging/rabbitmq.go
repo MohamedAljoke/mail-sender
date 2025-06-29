@@ -177,9 +177,22 @@ func (r *RabbitMQService) PublishEmailJob(ctx context.Context, queue string, job
 		return errors.NewValidationErrorWithCause("invalid job", err)
 	}
 
+	// Marshal the job
 	jobData, err := json.Marshal(job)
 	if err != nil {
 		return errors.NewRabbitMQErrorWithCause("failed to marshal job", err)
+	}
+
+	// Wrap in content structure to match API format
+	wrapper := struct {
+		Content json.RawMessage `json:"content"`
+	}{
+		Content: jobData,
+	}
+
+	wrappedData, err := json.Marshal(wrapper)
+	if err != nil {
+		return errors.NewRabbitMQErrorWithCause("failed to marshal wrapped job", err)
 	}
 
 	err = r.channel.PublishWithContext(
@@ -190,7 +203,7 @@ func (r *RabbitMQService) PublishEmailJob(ctx context.Context, queue string, job
 		false, // immediate
 		amqp.Publishing{
 			ContentType:  "application/json",
-			Body:         jobData,
+			Body:         wrappedData,
 			DeliveryMode: 2, // persistent
 			Timestamp:    time.Now(),
 		},
