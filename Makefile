@@ -1,6 +1,6 @@
 AWS_REGION ?= us-east-1
 ENVIRONMENT ?= dev
-PROJECT_NAME ?= mail-sender
+PROJECT_NAME ?= task-manager
 
 .PHONY: help plan deploy destroy ecr-login build-api build-worker push-api push-worker deploy
 help: 
@@ -52,5 +52,5 @@ push-worker: build-worker
 	docker tag $(PROJECT_NAME)-worker:latest $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
 	docker push $(shell aws sts get-caller-identity --query Account --output text).dkr.ecr.$(AWS_REGION).amazonaws.com/$(PROJECT_NAME)-worker:latest
 
-deploy: ecr-login push-api push-worker
+deploy: ecr-login push-api push-worker tf-deploy
 	@echo "Images pushed to ECR successfully!"

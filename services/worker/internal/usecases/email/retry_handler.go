@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/codes"
@@ -65,26 +66,43 @@ func (rh *RetryHandlerUseCaseImpl) HandleRetry(ctx context.Context, job *models.
 		span.RecordError(statusErr)
 	}
 
-	// Publish to retry queue
-	queueNames := &messaging.QueueNames{
-		EmailTasks:  "email_tasks",
-		EmailRetry:  "email_tasks_retry",
-		EmailFailed: "email_tasks_failed",
+	// Calculate retry delay (exponential backoff)
+	retryDelaySeconds := time.Duration(job.RetryCount*job.RetryCount) * time.Second
+	if retryDelaySeconds > 30*time.Second {
+		retryDelaySeconds = 30 * time.Second // Cap at 30 seconds
 	}
 
-	err = rh.messagingService.PublishEmailJob(ctx, queueNames.EmailRetry, job)
-	if err != nil {
-		span.RecordError(err)
-		span.SetStatus(codes.Error, "Failed to requeue job for retry")
-		return errors.NewJobProcessingErrorWithCause("failed to requeue job for retry", err)
-	}
+	log.Printf("Job %s will retry in %v (attempt %d/%d)", job.JobID, retryDelaySeconds, job.RetryCount, job.MaxRetries)
 
-	log.Printf("Job %s requeued for retry %d/%d", job.JobID, job.RetryCount, job.MaxRetries)
+	// Add retry delay before republishing
+	go func() {
+		time.Sleep(retryDelaySeconds)
+
+		// Publish back to main email queue
+		queueNames := &messaging.QueueNames{
+			EmailTasks:  "email_tasks",
+			EmailRetry:  "email_tasks_retry",
+			EmailFailed: "email_tasks_failed",
+		}
+
+		retryErr := rh.messagingService.PublishEmailJob(context.Background(), queueNames.EmailTasks, job)
+		if retryErr != nil {
+			log.Printf("Failed to requeue job %s for retry: %v", job.JobID, retryErr)
+			// Mark job as failed if we can't requeue it
+			if statusErr := rh.cacheService.UpdateJobStatus(context.Background(), job.JobID, models.JobStatusFailed, fmt.Sprintf("Failed to requeue: %v", retryErr), job.RetryCount); statusErr != nil {
+				log.Printf("Error updating job status to failed after requeue failure: %v", statusErr)
+			}
+		} else {
+			log.Printf("Job %s requeued for retry %d/%d", job.JobID, job.RetryCount, job.MaxRetries)
+		}
+	}()
+
 	span.SetAttributes(
 		attribute.String("email.status", "requeued"),
-		attribute.String("queue.name", queueNames.EmailRetry),
+		attribute.String("queue.name", "email_tasks"),
+		attribute.String("retry.delay", retryDelaySeconds.String()),
 	)
-	span.SetStatus(codes.Ok, "Job requeued for retry")
+	span.SetStatus(codes.Ok, "Job scheduled for retry")
 
 	return nil
 }

@@ -90,22 +90,7 @@ func (r *RabbitMQService) DeclareQueues(ctx context.Context) error {
 		return errors.NewRabbitMQErrorWithCause("failed to declare email tasks queue", err)
 	}
 
-	// Declare retry queue with delay
-	_, err = r.channel.QueueDeclare(
-		r.queueNames.EmailRetry, // name
-		true,                    // durable
-		false,                   // delete when unused
-		false,                   // exclusive
-		false,                   // no-wait
-		amqp.Table{
-			"x-message-ttl":             180000, // 3 minutes TTL
-			"x-dead-letter-exchange":    "",
-			"x-dead-letter-routing-key": r.queueNames.EmailTasks,
-		},
-	)
-	if err != nil {
-		return errors.NewRabbitMQErrorWithCause("failed to declare retry queue", err)
-	}
+	// Retry queue no longer needed - using single queue with retry delay
 
 	// Declare failed queue
 	_, err = r.channel.QueueDeclare(
