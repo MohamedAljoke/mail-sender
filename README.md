@@ -1,287 +1,137 @@
-# Distributed Email Sender
+# Mail Sender
 
-A distributed email processing system built with Node.js (API) and Go (Worker) that uses RabbitMQ for message queuing and Redis for job status tracking.
+An asynchronous email pipeline on **AWS ECS Fargate**: a Node.js API accepts email jobs and queues them in RabbitMQ, a Go worker sends them, and job status streams back to the browser over WebSockets. Everything runs in a multi-tier VPC, provisioned with **Terraform**.
 
-## Architecture
+**[Video walkthrough](https://www.loom.com/share/f9ab6f55084540c5a0ad010af3fbef89)**
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                              AWS Region: us-east-1                              │
-│                                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐    │
-│  │                    VPC: task-manager-vpc (10.16.0.0/16)                │    │
-│  │                                                                         │    │
-│  │  ┌─────────────┬─────────────┬─────────────┬─────────────────────────┐  │    │
-│  │  │     AZ-A    │     AZ-B    │     AZ-C    │                         │  │    │
-│  │  │             │             │             │                         │  │    │
-│  │  │ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │   ┌─────────────────┐   │  │    │
-│  │  │ │Web Layer│ │ │Web Layer│ │ │Web Layer│ │   │                 │   │  │    │
-│  │  │ │ Public  │ │ │ Public  │ │ │ Public  │ │   │  Load Balancer  │   │  │    │
-│  │  │ │.48.0/20 │ │ │.112.0/20│ │ │.176.0/20│ │   │      (ALB)      │   │  │    │
-│  │  │ └─────────┘ │ └─────────┘ │ └─────────┘ │   │                 │   │  │    │
-│  │  │             │             │             │   │ ┌─API-UI─────┐   │   │  │    │
-│  │  │ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │   │ │MailHog-UI  │   │   │  │    │
-│  │  │ │App Layer│ │ │App Layer│ │ │App Layer│ │   │ │ Jaeger-UI  │   │   │  │    │
-│  │  │ │ Private │ │ │ Private │ │ │ Private │ │   │ └───────────┘   │   │  │    │
-│  │  │ │.32.0/20 │ │ │.96.0/20 │ │ │.160.0/20│ │   └─────────────────┘   │  │    │
-│  │  │ └─────────┘ │ └─────────┘ │ └─────────┘ │                         │  │    │
-│  │  │             │             │             │                         │  │    │
-│  │  │ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │                         │  │    │
-│  │  │ │DB Layer │ │ │DB Layer │ │ │DB Layer │ │                         │  │    │
-│  │  │ │Isolated │ │ │Isolated │ │ │Isolated │ │                         │  │    │
-│  │  │ │.16.0/20 │ │ │.80.0/20 │ │ │.144.0/20│ │                         │  │    │
-│  │  │ └─────────┘ │ └─────────┘ │ └─────────┘ │                         │  │    │
-│  │  │             │             │             │                         │  │    │
-│  │  │ ┌─────────┐ │ ┌─────────┐ │ ┌─────────┐ │                         │  │    │
-│  │  │ │Reserved │ │ │Reserved │ │ │Reserved │ │                         │  │    │
-│  │  │ │.0.0/20  │ │ │.64.0/20 │ │ │.128.0/20│ │                         │  │    │
-│  │  │ └─────────┘ │ └─────────┘ │ └─────────┘ │                         │  │    │
-│  │  └─────────────┴─────────────┴─────────────┴─────────────────────────┘  │    │
-│  │                                                                         │    │
-│  │  ┌─────────────────────────────────────────────────────────────────┐   │    │
-│  │  │                    ECS Services in App Layer                    │   │    │
-│  │  │                                                                 │   │    │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │    │
-│  │  │  │   API       │  │   Worker    │  │  RabbitMQ   │              │   │    │
-│  │  │  │ Service     │  │  Service    │  │  Service    │              │   │    │
-│  │  │  │ (Node.js)   │  │    (Go)     │  │   +EFS      │              │   │    │
-│  │  │  │ Port: 3000  │  │ Port: 3002  │  │ Port: 5672  │              │   │    │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘              │   │    │
-│  │  │                                                                 │   │    │
-│  │  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐              │   │    │
-│  │  │  │    Redis    │  │   MailHog   │  │   Jaeger    │              │   │    │
-│  │  │  │   Service   │  │  Service    │  │  Service    │              │   │    │
-│  │  │  │ Port: 6379  │  │SMTP:1025    │  │Trace:14268  │              │   │    │
-│  │  │  │             │  │Web: 8025    │  │Web: 16686   │              │   │    │
-│  │  │  └─────────────┘  └─────────────┘  └─────────────┘              │   │    │
-│  │  └─────────────────────────────────────────────────────────────────┘   │    │
-│  │                                                                         │    │
-│  │  ┌─────────────────────────────────────────────────────────────────┐   │    │
-│  │  │           Service Discovery: task-manager.local                 │   │    │
-│  │  │                                                                 │   │    │
-│  │  │  • api.task-manager.local           • redis.task-manager.local  │   │    │
-│  │  │  • worker.task-manager.local        • mailhog.task-manager.local│   │    │
-│  │  │  • rabbitmq.task-manager.local      • jaeger.task-manager.local │   │    │
-│  │  └─────────────────────────────────────────────────────────────────┘   │    │
-│  │                                                                         │    │
-│  │  Internet Gateway ←→ Public Subnets ←→ NAT Gateway ←→ Private Subnets   │    │
-│  └─────────────────────────────────────────────────────────────────────────┘    │
-│                                                                                 │
-│  ┌─────────────────────────────────────────────────────────────────────────┐   │
-│  │                              ECR Repositories                           │   │
-│  │  • task-manager-api     • task-manager-worker                          │   │
-│  └─────────────────────────────────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────────────────────────────────┘
+## What this project demonstrates
 
-Data Flow:
-Internet → ALB → API Service (App Layer) → RabbitMQ → Worker Service → MailHog
-                     ↓                                    ↓
-                  Redis (Status)                      Redis (Update)
-                     ↓                                    ↓
-                  Jaeger (Tracing) ←─────────────────── Jaeger
+- **Async processing with a message broker:** the API responds immediately with a job ID; the worker processes jobs at its own pace and can be scaled horizontally.
+- **Retries and a failed-jobs queue:** a failed send is retried after 1 minute, up to 3 times, then moved to `email_tasks_failed`.
+- **Real-time status:** the worker publishes status changes to Redis Pub/Sub; the API relays them to the browser over WebSockets.
+- **Network design on AWS:** 3 AZs, public / private / isolated subnet tiers, ALB with path-based routing, NAT Gateway, VPC endpoints for ECR, S3 and EFS, and private DNS through Cloud Map.
+- **Infrastructure as code:** one Terraform module per concern (VPC, ALB, ECS cluster, ECR, one module per service).
+- **Distributed tracing:** OpenTelemetry in both services, so one trace follows a job from API to worker in Jaeger.
+- **Clean layering in both services:** use cases depend on interfaces (broker, cache, SMTP), so RabbitMQ can be swapped for SQS in the API.
+
+## AWS architecture
+
+```mermaid
+flowchart LR
+    user([User]) --> alb
+
+    subgraph vpc["VPC 10.16.0.0/16 · 3 AZs · us-east-1"]
+        subgraph public["Public subnets"]
+            alb["Application Load Balancer<br/>/api · /jaeger · /mailhog · /rabbitmq"]
+            nat["NAT Gateway<br/>outbound for private subnets"]
+        end
+
+        subgraph private["Private subnets · ECS Fargate"]
+            api["API<br/>Node.js · TypeScript"]
+            worker["Worker<br/>Go"]
+            rabbit[("RabbitMQ")]
+            redis[("Redis")]
+            mailhog["MailHog<br/>SMTP"]
+            jaeger["Jaeger"]
+        end
+
+        efs[("EFS<br/>RabbitMQ data")]
+        endpoints["VPC endpoints<br/>ECR · S3 · EFS"]
+    end
+
+    ecr[("ECR<br/>api · worker images")]
+
+    alb --> api
+    alb -.-> jaeger
+    alb -.-> mailhog
+    api -- publish job --> rabbit
+    rabbit -- consume --> worker
+    api <-- job status --> redis
+    worker -- status updates --> redis
+    worker -- send --> mailhog
+    rabbit --- efs
+    api -. traces .-> jaeger
+    worker -. traces .-> jaeger
+    private -. pull images .-> endpoints --> ecr
 ```
 
-**Key Architecture Points:**
+Services find each other by private DNS (`rabbitmq.task-manager.local`, `redis.task-manager.local`, ...) through AWS Cloud Map.
 
-1. **Multi-AZ Setup**: 3 availability zones (us-east-1a/b/c) for high availability
-2. **4-Tier Network**: Reserved, DB, App (private), Web (public) subnets  
-3. **ECS Fargate**: All services run as containerized tasks
-4. **Service Discovery**: Internal DNS resolution via `task-manager.local`
-5. **Load Balancer**: ALB routes traffic to API, MailHog UI, and Jaeger UI
-6. **Persistent Storage**: EFS for RabbitMQ data persistence
-7. **Security**: Security groups control inter-service communication
-8. **Observability**: Jaeger for distributed tracing, CloudWatch for logs
+## Job lifecycle
 
-## Components
+```mermaid
+sequenceDiagram
+    autonumber
+    participant B as Browser
+    participant A as API (Node.js)
+    participant Q as RabbitMQ
+    participant W as Worker (Go)
+    participant R as Redis
+    participant S as SMTP
 
-- **API Service** (`services/api/`): Node.js/TypeScript REST API that receives email requests
-- **Worker Service** (`services/worker/`): Go-based worker that processes email jobs
-- **Message Queue**: RabbitMQ for reliable job queuing
-- **Cache/Status**: Redis for job status tracking and caching
-- **Email Testing**: MailHog for local email testing
-- **Observability**: OpenTelemetry with Jaeger for distributed tracing
+    B->>A: POST /api/emails
+    A->>R: save job (queued)
+    A->>Q: publish to email_tasks
+    A-->>B: 201 job_id
+    Q->>W: deliver job
+    W->>R: status = processing
+    W->>S: send email
+    alt sent
+        W->>R: status = completed
+    else failed, retries left
+        W->>R: status = retrying
+        W->>Q: republish after 1 min
+    else failed 3 times
+        W->>R: status = failed
+        W->>Q: move to email_tasks_failed
+    end
+    R-->>A: Pub/Sub job_status_updates
+    A-->>B: WebSocket update
+```
 
-## Quick Start
+## Tech stack
 
-```bash
-# Start all services
-docker-compose up --build -d
+**API:** Node.js, TypeScript, Express, WebSockets, Zod
+**Worker:** Go, OpenTelemetry
+**Messaging & state:** RabbitMQ (SQS adapter available), Redis
+**AWS:** ECS Fargate, ECR, ALB, VPC, NAT Gateway, EFS, Cloud Map, CloudWatch Logs
+**Tooling:** Terraform, Docker Compose, Jaeger, MailHog
 
-# Send a test email
+## Run it locally
+
+```sh
+make up        # docker compose: API, worker, RabbitMQ, Redis, MailHog, Jaeger
+```
+
+| URL | What |
+|---|---|
+| http://localhost:3000 | Web UI to send emails and watch their status |
+| http://localhost:8025 | MailHog, the inbox where sent emails land |
+| http://localhost:16686 | Jaeger traces |
+| http://localhost:15672 | RabbitMQ management (`admin` / `password`) |
+
+Or from the terminal:
+
+```sh
 curl -X POST http://localhost:3000/api/emails \
   -H "Content-Type: application/json" \
-  -d '{"to":"test@example.com","subject":"Test","body":"Hello World"}'
+  -d '{"to":"test@example.com","subject":"Hi","body":"Hello"}'
 
-# Check job history
 curl http://localhost:3000/api/jobs/history
-
-# View emails in MailHog UI
-open http://localhost:8025
 ```
 
-## Services & Ports
+To see retries, send to `error-1@email.com` (fails once, then succeeds) or `error@email.com` (always fails and ends in the failed queue).
 
-| Service   | Port | Purpose                    |
-|-----------|------|----------------------------|
-| API       | 3000 | REST API endpoints         |
-| Worker    | 3002 | Worker health checks       |
-| RabbitMQ  | 5672 | AMQP message broker        |
-| RabbitMQ UI | 15672 | Management interface     |
-| Redis     | 6379 | Cache and job status       |
-| MailHog   | 8025 | Email testing UI           |
-| MailHog SMTP | 1025 | SMTP server             |
-| Jaeger    | 16686 | Tracing UI                |
+## Deploy to AWS
 
-## API Endpoints
-
-### POST /api/emails
-Submit an email job for processing.
-
-**Request:**
-```json
-{
-  "to": "recipient@example.com",
-  "subject": "Email Subject",
-  "body": "Email content"
-}
+```sh
+make deploy      # push images to ECR, terraform apply, roll out the ECS services
+make tf-destroy  # tear everything down
 ```
 
-**Response:**
-```json
-{
-  "message": "Email job submitted successfully",
-  "job_id": "uuid",
-  "status": "queued"
-}
-```
+## Trade-offs
 
-### GET /api/jobs/history
-Get all job history with status tracking.
-
-**Response:**
-```json
-{
-  "total": 2,
-  "jobs": [
-    {
-      "job_id": "uuid",
-      "to": "test@example.com",
-      "subject": "Test Email",
-      "status": "completed",
-      "created_at": "2025-06-29T15:52:17.432Z",
-      "updated_at": "2025-06-29T15:52:20.445Z",
-      "retry_count": 0,
-      "history": [
-        {"status": "queued", "timestamp": "...", "message": "Job queued"},
-        {"status": "processing", "timestamp": "...", "message": ""},
-        {"status": "completed", "timestamp": "...", "message": ""}
-      ]
-    }
-  ]
-}
-```
-
-### GET /health
-Health check endpoint for both API and Worker services.
-
-## Message Flow
-
-1. **API** receives email request via REST
-2. **API** creates job in Redis with "queued" status
-3. **API** publishes message to RabbitMQ `email_tasks` queue
-4. **Worker** consumes message from queue
-5. **Worker** updates job status to "processing"
-6. **Worker** sends email via SMTP (MailHog)
-7. **Worker** updates job status to "completed"
-8. **API** broadcasts status updates via WebSocket
-
-## Development
-
-### Running Tests
-```bash
-# API tests
-cd services/api && npm test
-
-# Worker tests
-cd services/worker && go test ./...
-```
-
-### Build Commands
-```bash
-# API
-cd services/api && npm run build
-
-# Worker
-cd services/worker && go build -o worker ./cmd/worker
-```
-
-### Environment Variables
-
-**API Service:**
-- `PORT=3000`
-- `RABBITMQ_URL=amqp://admin:password@rabbitmq:5672`
-- `REDIS_URL=redis://redis:6379`
-- `OTEL_EXPORTER_JAEGER_ENDPOINT=http://jaeger:14268/api/traces`
-
-**Worker Service:**
-- `PORT=3002`
-- `RABBITMQ_URL=amqp://admin:password@rabbitmq:5672`
-- `REDIS_URL=redis://redis:6379`
-- `SMTP_HOST=mailhog`
-- `SMTP_PORT=1025`
-
-## Troubleshooting
-
-### Common Issues
-
-**Emails stuck in "queued" status:**
-- Check RabbitMQ connection in worker logs
-- Verify queue names match between API and worker
-- Ensure message format compatibility
-
-**Worker not processing jobs:**
-- Check RabbitMQ connectivity: `docker logs mail-sender-rabbitmq-1`
-- Check worker logs: `docker logs mail-sender-worker-1`
-- Verify queue exists in RabbitMQ UI
-
-**Database connection issues:**
-- Check Redis connectivity: `docker logs mail-sender-redis-1`
-- Verify Redis URL format
-
-### Useful Commands
-
-```bash
-# View logs
-docker logs mail-sender-api-1 --tail=50
-docker logs mail-sender-worker-1 --tail=50
-
-# Check RabbitMQ queues
-curl -u admin:password http://localhost:15672/api/queues
-
-# Check Redis keys
-docker exec mail-sender-redis-1 redis-cli keys "*"
-
-# Restart services
-docker-compose restart api worker
-```
-
-## Recent Fixes
-
-**2025-06-29**: Fixed data format mismatch between API and Worker
-- API now wraps EmailJob data in `content` field to match IMessage interface
-- Worker now extracts job data from nested `content` structure
-- Added custom JSON unmarshaling for timestamp handling
-- Emails now process correctly from "queued" to "completed" status
-
-## Architecture Notes
-
-- **Fault Tolerance**: Jobs are persisted in RabbitMQ with durability
-- **Retry Logic**: Failed jobs can be retried with exponential backoff
-- **Monitoring**: Full distributed tracing with OpenTelemetry
-- **Scalability**: Worker can be horizontally scaled
-- **Development**: MailHog captures all emails for testing
-
-## Special Email Addresses for Testing
-
-- `error-1@email.com` - Simulates error on first try
-- `error@email.com` - Error sending mail
+This is a learning project, so some choices favor showing the pieces over production cost:
+- RabbitMQ, Redis and Jaeger run as Fargate tasks instead of Amazon MQ, ElastiCache and X-Ray.
+- MailHog stands in for a real SMTP provider such as SES.
+- A single NAT Gateway keeps cost down at the price of an AZ-level single point of failure.
